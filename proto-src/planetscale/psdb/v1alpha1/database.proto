@@ -38,4 +38,5 @@ message ExecuteResponse {
 service Database {
   rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse) {}
   rpc Execute(ExecuteRequest) returns (ExecuteResponse) {}
+  rpc StreamExecute(ExecuteRequest) returns (stream ExecuteResponse) {}
 }

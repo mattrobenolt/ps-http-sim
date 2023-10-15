@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/planetscale/log"
 	"github.com/planetscale/psdb/auth"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -116,10 +117,21 @@ func init() {
 	flag.Parse()
 }
 
+var logger *log.Logger
+
 func main() {
+	cfg := log.NewPlanetScaleConfig("pretty", log.DebugLevel)
+	logger, _ = cfg.Build()
+	defer logger.Sync()
+
 	initConnPool()
 	mux := http.NewServeMux()
 	mux.Handle(psdbv1alpha1connect.NewDatabaseHandler(&server{}))
+
+	logger.Info("running",
+		log.String("addr", *flagHTTPAddr),
+		log.Uint("port", *flagHTTPPort),
+	)
 	panic(http.ListenAndServe(
 		fmt.Sprintf("%s:%d", *flagHTTPAddr, *flagHTTPPort),
 		h2c.NewHandler(mux, &http2.Server{}),
@@ -132,19 +144,33 @@ func (s *server) CreateSession(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.CreateSessionRequest],
 ) (*connect.Response[psdbv1alpha1.CreateSessionResponse], error) {
+	ll := logger.With(
+		log.String("method", "CreateSession"),
+		log.String("content_type", req.Header().Get("Content-Type")),
+	)
+
 	creds, err := auth.ParseWithSecret(req.Header().Get("Authorization"))
 	if err != nil || creds.Type() != auth.BasicAuthType {
+		ll.Error("unauthenticated", log.Error(err))
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
+
+	ll = ll.With(
+		log.String("user", creds.Username()),
+	)
 
 	session := gonanoid.Must()
 
 	if _, err := getConn(context.Background(), creds.Username(), string(creds.SecretBytes()), session); err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
+			ll.Error("unauthenticated", log.Error(err))
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
 		}
+		ll.Error("failed to connect", log.Error(err))
 		return nil, err
 	}
+
+	ll.Info("ok")
 
 	return connect.NewResponse(&psdbv1alpha1.CreateSessionResponse{
 		Branch: gonanoid.Must(), // there is no branch, so fake it
@@ -160,27 +186,48 @@ func (s *server) Execute(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.ExecuteRequest],
 ) (*connect.Response[psdbv1alpha1.ExecuteResponse], error) {
+	ll := logger.With(
+		log.String("method", "Execute"),
+		log.String("content_type", req.Header().Get("Content-Type")),
+	)
+
 	creds, err := auth.ParseWithSecret(req.Header().Get("Authorization"))
 	if err != nil || creds.Type() != auth.BasicAuthType {
+		ll.Error("unauthenticated", log.Error(err))
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
+
+	ll = ll.With(
+		log.String("user", creds.Username()),
+	)
 
 	msg := req.Msg
 	query := msg.Query
 	session := msg.Session
+	clientSession := session != ""
 
 	// if there is no session, let's generate a new one
-	if session == "" {
+	if !clientSession {
 		session = gonanoid.Must()
 	}
+
+	ll = ll.With(
+		log.String("query", query),
+		log.String("session", session),
+		log.Bool("client_session", clientSession),
+	)
 
 	conn, err := getConn(context.Background(), creds.Username(), string(creds.SecretBytes()), session)
 	if err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
+			ll.Error("unauthenticated", log.Error(err))
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
 		}
+		ll.Error("failed to connect", log.Error(err))
 		return nil, err
 	}
+
+	ll.Info("ok")
 
 	// This is a gross simplificiation, but is likely sufficient
 	qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
@@ -189,6 +236,79 @@ func (s *server) Execute(
 		Result:  sqltypes.ResultToProto3(qr),
 		Error:   vterrors.ToVTRPC(err),
 	}), nil
+}
+
+func (s *server) StreamExecute(
+	ctx context.Context,
+	req *connect.Request[psdbv1alpha1.ExecuteRequest],
+	stream *connect.ServerStream[psdbv1alpha1.ExecuteResponse],
+) error {
+	ll := logger.With(
+		log.String("method", "StreamExecute"),
+		log.String("content_type", req.Header().Get("Content-Type")),
+	)
+
+	creds, err := auth.ParseWithSecret(req.Header().Get("Authorization"))
+	if err != nil || creds.Type() != auth.BasicAuthType {
+		ll.Error("unauthenticated", log.Error(err))
+		return connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	ll = ll.With(
+		log.String("user", creds.Username()),
+	)
+
+	msg := req.Msg
+	query := msg.Query
+	session := msg.Session
+	clientSession := session != ""
+
+	// if there is no session, let's generate a new one
+	if !clientSession {
+		session = gonanoid.Must()
+	}
+
+	ll = ll.With(
+		log.String("query", query),
+		log.String("session", session),
+		log.Bool("client_session", clientSession),
+	)
+
+	conn, err := getConn(context.Background(), creds.Username(), string(creds.SecretBytes()), session)
+	if err != nil {
+		if strings.Contains(err.Error(), "Access denied for user") {
+			ll.Error("unauthenticated", log.Error(err))
+			return connect.NewError(connect.CodeUnauthenticated, err)
+		}
+		ll.Error("failed to connect", log.Error(err))
+		return err
+	}
+
+	// fake a streaming response by just returning 2 messages of the same payload
+	// far from reality, but a simple way to exercise the protocol.
+	qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
+
+	ll.Info("send msg")
+	if err := stream.Send(&psdbv1alpha1.ExecuteResponse{
+		Session: session,
+		Result:  sqltypes.ResultToProto3(qr),
+		Error:   vterrors.ToVTRPC(err),
+	}); err != nil {
+		ll.Error("send failed", log.Error(err))
+		return err
+	}
+
+	ll.Info("send msg")
+	if err := stream.Send(&psdbv1alpha1.ExecuteResponse{
+		Session: session,
+		Result:  sqltypes.ResultToProto3(qr),
+		Error:   vterrors.ToVTRPC(err),
+	}); err != nil {
+		ll.Error("send failed", log.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 func initConnPool() {

@@ -1,0 +1,18 @@
+version: v1
+plugins:
+  - name: go
+    path: bin/protoc-gen-go
+    out: types
+    opt:
+      - paths=source_relative
+  - name: go-vtproto
+    path: bin/protoc-gen-go-vtproto
+    out: types
+    opt:
+      - paths=source_relative
+      - features=marshal+unmarshal+size+pool
+  - name: connect-go
+    path: bin/protoc-gen-connect-go
+    out: types
+    opt:
+      - paths=source_relative
