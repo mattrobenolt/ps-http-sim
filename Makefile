@@ -46,8 +46,11 @@ tools: $(PROTO_TOOLS)
 $(PSDB_V1ALPHA1)/database.pb.go: $(PROTO_TOOLS) proto-src/planetscale/psdb/v1alpha1/database.proto | $(PSDB_PROTO_OUT)
 	$(BIN)/buf generate -v proto-src/planetscale/psdb/v1alpha1/database.proto
 
-run: proto
-	go run $(gomod) \
+$(BIN)/ps-http-sim: main.go go.mod go.sum
+	GOBIN=$(abspath $(BIN)) go install $(gomod)
+
+run: $(BIN)/ps-http-sim proto
+	$(BIN)/ps-http-sim \
 		-http-addr=127.0.0.1 \
 		-http-port=8080 \
 		-mysql-addr=127.0.0.1 \
@@ -56,3 +59,6 @@ run: proto
 		-mysql-no-pass \
 		-mysql-max-rows=1000 \
 		-mysql-dbname=mysql
+
+docker:
+	docker build --rm -t ps-http-sim .
