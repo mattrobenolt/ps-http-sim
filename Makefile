@@ -15,7 +15,7 @@ all: $(BIN)/$(app)
 proto: \
 	$(PSDB_V1ALPHA1)/database.pb.go
 
-clean: clean-proto clean-bin
+clean: clean-bin clean-dist
 
 clean-proto:
 	rm -rf $(PSDB_PROTO_OUT)
@@ -23,13 +23,16 @@ clean-proto:
 clean-bin:
 	rm -rf $(BIN)
 
+clean-dist:
+	rm -rf dist
+
 $(BIN):
 	mkdir -p $(BIN)
 
 $(PSDB_PROTO_OUT):
 	mkdir -p $(PSDB_PROTO_OUT)
 
-GO_INSTALL := env GOBIN=$(PWD)/$(BIN) go install
+GO_INSTALL := env GOBIN=$(PWD)/$(BIN) go install -ldflags "-s -w" -trimpath
 
 $(BIN)/buf: Makefile | $(BIN)
 	$(GO_INSTALL) github.com/bufbuild/buf/cmd/buf@v1.27.0
@@ -42,6 +45,9 @@ $(BIN)/protoc-gen-connect-go: Makefile | $(BIN)
 
 $(BIN)/protoc-gen-go-vtproto: Makefile | $(BIN)
 	$(GO_INSTALL) github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@v0.5.0
+
+$(BIN)/goreleaser: Makefile | $(BIN)
+	$(GO_INSTALL) github.com/goreleaser/goreleaser@v1.21.2
 
 PROTO_TOOLS := $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-go-vtproto
 tools: $(PROTO_TOOLS)
@@ -69,4 +75,4 @@ docker:
 run-mysql:
 	docker run -it --rm --name $(app)-mysqld -e MYSQL_ALLOW_EMPTY_PASSWORD="true" -e MYSQL_ROOT_PASSWORD="" -p 127.0.0.1:3306:3306 mysql:8.0.29
 
-.PHONY: all proto clean clean-proto clean-bin tools run run-mysql
+.PHONY: all proto clean clean-proto clean-bin clean-dist tools run run-mysql
