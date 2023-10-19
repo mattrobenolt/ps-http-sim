@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@planetscale/database": "^1.11.0"
+  }
+}
