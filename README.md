@@ -31,6 +31,20 @@ Usage of ps-http-sim:
 
 There is an example Node configuration in the `example/` folder.
 
+A sample `mysqld` docker container can be run by doing:
+
+```
+$ make run-mysql
+```
+
+If you'd prefer not to run a binary directly, a docker container can be built with:
+
+```
+$ make docker
+```
+
+I'm not good at docker, so if this is bad or any suggestions, I'm open to anything.
+
 ## Authentication
 
 The authentication you configure in your database-js application, is passed along as-is to your local MySQL database. So you'd want to match up the authentication to match what you'd with a normal MySQL client.

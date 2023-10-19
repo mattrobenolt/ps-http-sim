@@ -6,3 +6,7 @@ example
 Dockerfile
 Makefile
 bin
+README.md
+LICENSE
+buf.*
+proto-src
