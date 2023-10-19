@@ -54,8 +54,8 @@ $(BIN)/$(app): main.go go.mod go.sum | $(BIN)
 
 run: $(BIN)/$(app)
 	$< \
-		-http-addr=127.0.0.1 \
-		-http-port=8080 \
+		-listen-addr=127.0.0.1 \
+		-listen-port=8080 \
 		-mysql-addr=127.0.0.1 \
 		-mysql-port=3306 \
 		-mysql-idle-timeout=5s \

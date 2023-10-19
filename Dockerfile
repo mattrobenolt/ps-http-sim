@@ -12,4 +12,4 @@ FROM scratch
 COPY --from=build /go/bin/ps-http-sim /ps-http-sim
 
 EXPOSE 8080
-ENTRYPOINT ["/ps-http-sim", "-http-addr=0.0.0.0"]
+ENTRYPOINT ["/ps-http-sim", "-listen-addr=0.0.0.0"]

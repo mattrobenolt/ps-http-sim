@@ -42,8 +42,8 @@ type timedConn struct {
 var (
 	commandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	flagHTTPAddr         = commandLine.String("http-addr", "127.0.0.1", "HTTP server address")
-	flagHTTPPort         = commandLine.Uint("http-port", 8080, "HTTP server port")
+	flagListenAddr       = commandLine.String("listen-addr", "127.0.0.1", "HTTP server address")
+	flagListenPort       = commandLine.Uint("listen-port", 8080, "HTTP server port")
 	flagMySQLAddr        = commandLine.String("mysql-addr", "127.0.0.1", "MySQL address")
 	flagMySQLPort        = commandLine.Uint("mysql-port", 3306, "MySQL port")
 	flagMySQLNoPass      = commandLine.Bool("mysql-no-pass", false, "Don't use password for MySQL connection")
@@ -129,11 +129,11 @@ func main() {
 	mux.Handle(psdbv1alpha1connect.NewDatabaseHandler(&server{}))
 
 	logger.Info("running",
-		log.String("addr", *flagHTTPAddr),
-		log.Uint("port", *flagHTTPPort),
+		log.String("addr", *flagListenAddr),
+		log.Uint("port", *flagListenPort),
 	)
 	panic(http.ListenAndServe(
-		fmt.Sprintf("%s:%d", *flagHTTPAddr, *flagHTTPPort),
+		fmt.Sprintf("%s:%d", *flagListenAddr, *flagListenPort),
 		h2c.NewHandler(mux, &http2.Server{}),
 	))
 }
