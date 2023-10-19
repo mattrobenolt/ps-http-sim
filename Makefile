@@ -75,4 +75,7 @@ docker:
 run-mysql:
 	docker run -it --rm --name $(app)-mysqld -e MYSQL_ALLOW_EMPTY_PASSWORD="true" -e MYSQL_ROOT_PASSWORD="" -p 127.0.0.1:3306:3306 mysql:8.0.29
 
-.PHONY: all proto clean clean-proto clean-bin clean-dist tools run run-mysql
+publish: clean $(BIN)/goreleaser
+	$(BIN)/goreleaser release
+
+.PHONY: all proto clean clean-proto clean-bin clean-dist tools run run-mysql publish

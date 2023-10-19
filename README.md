@@ -6,6 +6,28 @@ At the moment, this is not an official PlanetScale project, and is in early stag
 
 This is intended to aid when adopting `@planetscale/database` in your application and wanting to run against a local database.
 
+Please open issues for bugs or any feedback.
+
+# Installation
+
+## Binaries
+
+Compiled binaries can be found in GitHub Releases: https://github.com/mattrobenolt/ps-http-sim/releases
+
+## Build from source
+
+Go is required:
+
+```
+$ go install github.com/mattrobenolt/ps-http-sim@latest
+```
+
+or from within this repository:
+
+```
+$ make
+```
+
 # Usage
 
 ```
