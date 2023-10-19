@@ -1,4 +1,5 @@
-gomod := github.com/mattrobenolt/ps-http-sim
+app = ps-http-sim
+gomod := github.com/mattrobenolt/$(app)
 
 PSDB_PROTO_OUT := types
 PSDB_PROTO_ROOT := $(PSDB_PROTO_OUT)/psdb
@@ -8,6 +9,8 @@ BIN := bin
 
 UNAME_OS := $(shell uname -s)
 UNAME_ARCH := $(shell uname -m)
+
+all: $(BIN)/$(app)
 
 proto: \
 	$(PSDB_V1ALPHA1)/database.pb.go
@@ -46,11 +49,11 @@ tools: $(PROTO_TOOLS)
 $(PSDB_V1ALPHA1)/database.pb.go: $(PROTO_TOOLS) proto-src/planetscale/psdb/v1alpha1/database.proto | $(PSDB_PROTO_OUT)
 	$(BIN)/buf generate -v proto-src/planetscale/psdb/v1alpha1/database.proto
 
-$(BIN)/ps-http-sim: main.go go.mod go.sum
-	GOBIN=$(abspath $(BIN)) go install $(gomod)
+$(BIN)/$(app): main.go go.mod go.sum | $(BIN)
+	$(GO_INSTALL) $(gomod)
 
-run: $(BIN)/ps-http-sim proto
-	$(BIN)/ps-http-sim \
+run: $(BIN)/$(app)
+	$< \
 		-http-addr=127.0.0.1 \
 		-http-port=8080 \
 		-mysql-addr=127.0.0.1 \
@@ -61,4 +64,9 @@ run: $(BIN)/ps-http-sim proto
 		-mysql-dbname=mysql
 
 docker:
-	docker build --rm -t ps-http-sim .
+	docker build --rm -t $(app) .
+
+run-mysql:
+	docker run -it --rm --name $(app)-mysqld -e MYSQL_ALLOW_EMPTY_PASSWORD="true" -e MYSQL_ROOT_PASSWORD="" -p 127.0.0.1:3306:3306 mysql:8.0.29
+
+.PHONY: all proto clean clean-proto clean-bin tools run run-mysql
