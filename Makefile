@@ -35,7 +35,7 @@ $(PSDB_PROTO_OUT):
 GO_INSTALL := env GOBIN=$(PWD)/$(BIN) go install -ldflags "-s -w" -trimpath
 
 $(BIN)/buf: Makefile | $(BIN)
-	$(GO_INSTALL) github.com/bufbuild/buf/cmd/buf@v1.27.0
+	$(GO_INSTALL) github.com/bufbuild/buf/cmd/buf@v1.28.0
 
 $(BIN)/protoc-gen-go: Makefile | $(BIN)
 	$(GO_INSTALL) google.golang.org/protobuf/cmd/protoc-gen-go
@@ -47,7 +47,7 @@ $(BIN)/protoc-gen-go-vtproto: Makefile | $(BIN)
 	$(GO_INSTALL) github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@v0.5.0
 
 $(BIN)/goreleaser: Makefile | $(BIN)
-	$(GO_INSTALL) github.com/goreleaser/goreleaser@v1.21.2
+	$(GO_INSTALL) github.com/goreleaser/goreleaser@v1.22.1
 
 PROTO_TOOLS := $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-go-vtproto
 tools: $(PROTO_TOOLS)
