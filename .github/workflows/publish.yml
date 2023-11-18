@@ -1,0 +1,19 @@
+name: publish
+
+on:
+  - push
+
+jobs:
+  publish-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          docker build . --tag ghcr.io/mattrobenolt/ps-http-sim:latest
+          docker run ghcr.io/mattrobenolt/ps-http-sim:latest
+          docker push ghcr.io/mattrobenolt/ps-http-sim:latest
