@@ -18,5 +18,4 @@ jobs:
       - run: |
           REPO=$(echo "${{ github.repository }}" | awk '{print tolower($0)}')
           docker build . --tag ghcr.io/$REPO:latest
-          docker run ghcr.io/$REPO:latest
           docker push ghcr.io/$REPO:latest
