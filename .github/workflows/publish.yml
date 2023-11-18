@@ -16,6 +16,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - run: |
-          docker build . --tag ghcr.io/${{ github.repository }}:latest
-          docker run ghcr.io/${{ github.repository }}:latest
-          docker push ghcr.io/${{ github.repository }}:latest
+          REPO=$(echo "${{ github.repository }}" | awk '{print tolower($0)}')
+          docker build . --tag ghcr.io/$REPO:latest
+          docker run ghcr.io/$REPO:latest
+          docker push ghcr.io/$REPO:latest
