@@ -16,6 +16,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - run: |
-          docker build . --tag ghcr.io/mattrobenolt/ps-http-sim:latest
-          docker run ghcr.io/mattrobenolt/ps-http-sim:latest
-          docker push ghcr.io/mattrobenolt/ps-http-sim:latest
+          docker build . --tag ghcr.io/${{ github.repository }}:latest
+          docker run ghcr.io/${{ github.repository }}:latest
+          docker push ghcr.io/${{ github.repository }}:latest
