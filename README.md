@@ -14,6 +14,10 @@ Please open issues for bugs or any feedback.
 
 Compiled binaries can be found in GitHub Releases: https://github.com/mattrobenolt/ps-http-sim/releases
 
+## Docker
+
+Images are published to [ghcr.io/mattrobenolt/ps-http-sim:latest](https://github.com/mattrobenolt/ps-http-sim/pkgs/container/ps-http-sim)
+
 ## Build from source
 
 Go is required:
