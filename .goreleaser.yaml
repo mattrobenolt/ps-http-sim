@@ -6,6 +6,8 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
+project_name: ps-http-sim
+
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -37,6 +39,16 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+
+dockers:
+  - use: buildx
+    image_templates:
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:{{ .Tag }}
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:latest
+    build_flag_templates:
+      - --target=release
 
 changelog:
   sort: asc
