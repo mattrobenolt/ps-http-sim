@@ -18,6 +18,17 @@ Compiled binaries can be found in GitHub Releases: https://github.com/mattrobeno
 
 Images are published to [ghcr.io/mattrobenolt/ps-http-sim:latest](https://github.com/mattrobenolt/ps-http-sim/pkgs/container/ps-http-sim)
 
+### docker-compose
+A sample docker-compose.yml is available in the examples folder.
+This will spin up a mysql server on the default port of 3306, and ps-http-sim on port 3900.
+
+When setting up your connection, the config object needs to use the `url` property with a `http://` address with a non-null password, instead of `host`, `username` & `password`.
+e.g. `{ url: 'http://root:nonNullPassword@localhost:3900'}`
+Using `host` will force https.
+
+You can connect directly to the mysql server using a mysql uri
+`mysql://root:nonNullPassword@localhost/planetscale`
+
 ## Build from source
 
 Go is required:
