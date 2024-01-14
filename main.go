@@ -15,15 +15,15 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/planetscale/log"
 	"github.com/planetscale/psdb/auth"
+	psdbv1alpha1 "github.com/planetscale/psdb/types/psdb/v1alpha1"
+	"github.com/planetscale/psdb/types/psdb/v1alpha1/psdbv1alpha1connect"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqlescape"
-	"vitess.io/vitess/go/sqltypes"
-	"vitess.io/vitess/go/vt/vterrors"
 
-	psdbv1alpha1 "github.com/mattrobenolt/ps-http-sim/types/psdb/v1alpha1"
-	"github.com/mattrobenolt/ps-http-sim/types/psdb/v1alpha1/psdbv1alpha1connect"
+	"github.com/mattrobenolt/ps-http-sim/internal/session"
+	"github.com/mattrobenolt/ps-http-sim/internal/vitess"
 )
 
 var (
@@ -132,7 +132,7 @@ func main() {
 
 	initConnPool()
 	mux := http.NewServeMux()
-	mux.Handle(psdbv1alpha1connect.NewDatabaseHandler(&server{}))
+	mux.Handle(psdbv1alpha1connect.NewDatabaseHandler(server{}))
 
 	logger.Info("running",
 		log.String("addr", *flagListenAddr),
@@ -146,7 +146,7 @@ func main() {
 
 type server struct{}
 
-func (s *server) CreateSession(
+func (server) CreateSession(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.CreateSessionRequest],
 ) (*connect.Response[psdbv1alpha1.CreateSessionResponse], error) {
@@ -165,9 +165,10 @@ func (s *server) CreateSession(
 		log.String("user", creds.Username()),
 	)
 
-	session := gonanoid.Must()
+	sess := session.New()
+	sessionID := session.UUID(sess)
 
-	if conn, err := getConn(context.Background(), creds.Username(), string(creds.SecretBytes()), session); err != nil {
+	if conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), sessionID); err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
 			ll.Error("unauthenticated", log.Error(err))
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
@@ -175,7 +176,7 @@ func (s *server) CreateSession(
 			ll.Warn(err.Error())
 			return nil, connect.NewError(
 				connect.CodePermissionDenied,
-				fmt.Errorf("%s: %s", err.Error(), session),
+				fmt.Errorf("%s: %s", err.Error(), sessionID),
 			)
 		}
 		ll.Error("failed to connect", log.Error(err))
@@ -193,11 +194,11 @@ func (s *server) CreateSession(
 			Username: creds.Username(),
 			Psid:     "planetscale-1",
 		},
-		Session: session,
+		Session: sess,
 	}), nil
 }
 
-func (s *server) Execute(
+func (server) Execute(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.ExecuteRequest],
 ) (*connect.Response[psdbv1alpha1.ExecuteResponse], error) {
@@ -218,21 +219,22 @@ func (s *server) Execute(
 
 	msg := req.Msg
 	query := msg.Query
-	session := msg.Session
-	clientSession := session != ""
+	sess := msg.Session
+	clientSession := sess != nil
 
 	// if there is no session, let's generate a new one
 	if !clientSession {
-		session = gonanoid.Must()
+		sess = session.New()
 	}
+	sessionID := session.UUID(sess)
 
 	ll = ll.With(
 		log.String("query", query),
-		log.String("session", session),
+		log.String("session_id", sessionID),
 		log.Bool("client_session", clientSession),
 	)
 
-	conn, err := getConn(context.Background(), creds.Username(), string(creds.SecretBytes()), session)
+	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), sessionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
 			ll.Error("unauthenticated", log.Error(err))
@@ -241,7 +243,7 @@ func (s *server) Execute(
 			ll.Warn(err.Error())
 			return nil, connect.NewError(
 				connect.CodePermissionDenied,
-				fmt.Errorf("%s: %s", err.Error(), session),
+				fmt.Errorf("%s: %s", err.Error(), sessionID),
 			)
 		}
 		ll.Error("failed to connect", log.Error(err))
@@ -255,13 +257,13 @@ func (s *server) Execute(
 	qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
 
 	return connect.NewResponse(&psdbv1alpha1.ExecuteResponse{
-		Session: session,
-		Result:  sqltypes.ResultToProto3(qr),
-		Error:   vterrors.ToVTRPC(err),
+		Session: sess,
+		Result:  vitess.ResultToProto(qr),
+		Error:   vitess.ToVTRPC(err),
 	}), nil
 }
 
-func (s *server) StreamExecute(
+func (server) StreamExecute(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.ExecuteRequest],
 	stream *connect.ServerStream[psdbv1alpha1.ExecuteResponse],
@@ -283,21 +285,22 @@ func (s *server) StreamExecute(
 
 	msg := req.Msg
 	query := msg.Query
-	session := msg.Session
-	clientSession := session != ""
+	sess := msg.Session
+	clientSession := sess != nil
 
 	// if there is no session, let's generate a new one
 	if !clientSession {
-		session = gonanoid.Must()
+		sess = session.New()
 	}
+	sessionID := session.UUID(sess)
 
 	ll = ll.With(
 		log.String("query", query),
-		log.String("session", session),
+		log.String("session_id", sessionID),
 		log.Bool("client_session", clientSession),
 	)
 
-	conn, err := getConn(context.Background(), creds.Username(), string(creds.SecretBytes()), session)
+	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), sessionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
 			ll.Error("unauthenticated", log.Error(err))
@@ -306,7 +309,7 @@ func (s *server) StreamExecute(
 			ll.Warn(err.Error())
 			return connect.NewError(
 				connect.CodePermissionDenied,
-				fmt.Errorf("%s: %s", err.Error(), session),
+				fmt.Errorf("%s: %s", err.Error(), sessionID),
 			)
 		}
 		ll.Error("failed to connect", log.Error(err))
@@ -320,9 +323,9 @@ func (s *server) StreamExecute(
 
 	ll.Info("send msg")
 	if err := stream.Send(&psdbv1alpha1.ExecuteResponse{
-		Session: session,
-		Result:  sqltypes.ResultToProto3(qr),
-		Error:   vterrors.ToVTRPC(err),
+		Session: sess,
+		Result:  vitess.ResultToProto(qr),
+		Error:   vitess.ToVTRPC(err),
 	}); err != nil {
 		ll.Error("send failed", log.Error(err))
 		return err
@@ -330,15 +333,29 @@ func (s *server) StreamExecute(
 
 	ll.Info("send msg")
 	if err := stream.Send(&psdbv1alpha1.ExecuteResponse{
-		Session: session,
-		Result:  sqltypes.ResultToProto3(qr),
-		Error:   vterrors.ToVTRPC(err),
+		Session: sess,
+		Result:  vitess.ResultToProto(qr),
+		Error:   vitess.ToVTRPC(err),
 	}); err != nil {
 		ll.Error("send failed", log.Error(err))
 		return err
 	}
 
 	return nil
+}
+
+func (server) CloseSession(
+	ctx context.Context,
+	req *connect.Request[psdbv1alpha1.CloseSessionRequest],
+) (*connect.Response[psdbv1alpha1.CloseSessionResponse], error) {
+	return connect.NewResponse(&psdbv1alpha1.CloseSessionResponse{}), nil
+}
+
+func (server) Prepare(
+	ctx context.Context,
+	req *connect.Request[psdbv1alpha1.PrepareRequest],
+) (*connect.Response[psdbv1alpha1.PrepareResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
 }
 
 func initConnPool() {
@@ -348,8 +365,8 @@ func initConnPool() {
 		// this is just very quick and simple, it has race conditions,
 		// but I don't care for this.
 		timer := time.NewTicker(*flagMySQLIdleTimeout)
-		for {
-			<-timer.C
+		defer timer.Stop()
+		for range timer.C {
 			expiration := time.Now().Add(-*flagMySQLIdleTimeout)
 			expired := make([]mysqlConnKey, 0)
 

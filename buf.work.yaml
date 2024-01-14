@@ -1,4 +1,0 @@
-version: v1
-directories:
-  - proto-src/planetscale
-  - proto-src/vitess
