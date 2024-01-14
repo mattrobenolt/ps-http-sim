@@ -255,6 +255,7 @@ func (server) Execute(
 
 	// This is a gross simplificiation, but is likely sufficient
 	qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
+	session.Update(qr, sess)
 
 	return connect.NewResponse(&psdbv1alpha1.ExecuteResponse{
 		Session: sess,
@@ -320,6 +321,7 @@ func (server) StreamExecute(
 	// fake a streaming response by just returning 2 messages of the same payload
 	// far from reality, but a simple way to exercise the protocol.
 	qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
+	session.Update(qr, sess)
 
 	ll.Info("send msg")
 	if err := stream.Send(&psdbv1alpha1.ExecuteResponse{

@@ -3,6 +3,8 @@ gomod := github.com/mattrobenolt/$(app)
 
 BIN := bin
 
+src := main.go internal/session/session.go internal/vitess/vitess.go
+
 all: $(BIN)/$(app)
 
 clean: clean-bin clean-dist
@@ -21,7 +23,7 @@ GO_INSTALL := env GOBIN=$(PWD)/$(BIN) go install -ldflags "-s -w" -trimpath
 $(BIN)/goreleaser: Makefile | $(BIN)
 	$(GO_INSTALL) github.com/goreleaser/goreleaser@v1.22.1
 
-$(BIN)/$(app): main.go go.mod go.sum | $(BIN)
+$(BIN)/$(app): main.go go.mod go.sum $(src) | $(BIN)
 	$(GO_INSTALL) $(gomod)
 
 run: $(BIN)/$(app)

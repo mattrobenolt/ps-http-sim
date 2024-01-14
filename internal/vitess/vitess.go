@@ -41,10 +41,10 @@ func ResultToProto(qr *sqltypes.Result) *querypb.QueryResult {
 	return unsafeCastQueryResult(sqltypes.ResultToProto3(qr))
 }
 
-func castTo[RT any, T any](a T) RT {
-	return (*(*RT)(unsafe.Pointer(&a)))
+func castTo[RT any, T any](a T) *RT {
+	return (*(**RT)(unsafe.Pointer(&a)))
 }
 
 func unsafeCastQueryResult(qr *vitessquerypb.QueryResult) *querypb.QueryResult {
-	return castTo[*querypb.QueryResult](qr)
+	return castTo[querypb.QueryResult](qr)
 }
