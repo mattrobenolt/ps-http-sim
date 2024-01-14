@@ -32,7 +32,7 @@ var (
 )
 
 type mysqlConnKey struct {
-	username, pass, session string
+	username, pass, dbname, session string
 }
 
 type timedConn struct {
@@ -61,8 +61,8 @@ var errSessionInUse = errors.New("session already in use")
 // since this isn't meant to truly represent reality, it's possible you
 // can do things with connections locally by munging session ids or auth
 // that aren't allowed on PlanetScale. This is meant to just mimic the public API.
-func getConn(ctx context.Context, uname, pass, session string) (*timedConn, error) {
-	key := mysqlConnKey{uname, pass, session}
+func getConn(ctx context.Context, uname, pass, dbname, session string) (*timedConn, error) {
+	key := mysqlConnKey{uname, pass, dbname, session}
 
 	// check first if there's already a connection
 	connMu.RLock()
@@ -80,7 +80,7 @@ func getConn(ctx context.Context, uname, pass, session string) (*timedConn, erro
 
 	// if not, dial for a new connection
 	// without a lock, so parallel dials can happen
-	rawConn, err := dial(ctx, uname, pass)
+	rawConn, err := dial(ctx, uname, pass, dbname)
 	if err != nil {
 		return nil, err
 	}
@@ -92,12 +92,12 @@ func getConn(ctx context.Context, uname, pass, session string) (*timedConn, erro
 
 	// since it was parallel, the last one would have won and been written
 	// so re-read back so we use the conn that was actually stored in the pool
-	return getConn(ctx, uname, pass, session)
+	return getConn(ctx, uname, pass, dbname, session)
 }
 
 // dial connects to the underlying MySQL server, and switches to the underlying
 // database automatically.
-func dial(ctx context.Context, uname, pass string) (*mysql.Conn, error) {
+func dial(ctx context.Context, uname, pass, dbname string) (*mysql.Conn, error) {
 	if *flagMySQLNoPass {
 		pass = ""
 	}
@@ -110,9 +110,11 @@ func dial(ctx context.Context, uname, pass string) (*mysql.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := conn.ExecuteFetch("USE "+sqlescape.EscapeID(*flagMySQLDbname), 1, false); err != nil {
-		conn.Close()
-		return nil, err
+	if dbname != "" {
+		if _, err := conn.ExecuteFetch("USE "+sqlescape.EscapeID(dbname), 1, false); err != nil {
+			conn.Close()
+			return nil, err
+		}
 	}
 	return conn, nil
 }
@@ -165,10 +167,11 @@ func (server) CreateSession(
 		log.String("user", creds.Username()),
 	)
 
-	sess := session.New()
+	sess := session.New(*flagMySQLDbname)
 	sessionID := session.UUID(sess)
+	dbname := session.DBName(sess)
 
-	if conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), sessionID); err != nil {
+	if conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), dbname, sessionID); err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
 			ll.Error("unauthenticated", log.Error(err))
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
@@ -224,9 +227,10 @@ func (server) Execute(
 
 	// if there is no session, let's generate a new one
 	if !clientSession {
-		sess = session.New()
+		sess = session.New(*flagMySQLDbname)
 	}
 	sessionID := session.UUID(sess)
+	dbname := session.DBName(sess)
 
 	ll = ll.With(
 		log.String("query", query),
@@ -234,7 +238,7 @@ func (server) Execute(
 		log.Bool("client_session", clientSession),
 	)
 
-	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), sessionID)
+	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), dbname, sessionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
 			ll.Error("unauthenticated", log.Error(err))
@@ -291,9 +295,10 @@ func (server) StreamExecute(
 
 	// if there is no session, let's generate a new one
 	if !clientSession {
-		sess = session.New()
+		sess = session.New(*flagMySQLDbname)
 	}
 	sessionID := session.UUID(sess)
+	dbname := session.DBName(sess)
 
 	ll = ll.With(
 		log.String("query", query),
@@ -301,7 +306,7 @@ func (server) StreamExecute(
 		log.Bool("client_session", clientSession),
 	)
 
-	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), sessionID)
+	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), dbname, sessionID)
 	if err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
 			ll.Error("unauthenticated", log.Error(err))

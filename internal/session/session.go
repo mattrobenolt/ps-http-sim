@@ -17,8 +17,15 @@ func UUID(session *psdbv1alpha1.Session) string {
 	return ""
 }
 
+func DBName(session *psdbv1alpha1.Session) string {
+	if session != nil && session.VitessSession != nil {
+		return session.VitessSession.TargetString
+	}
+	return ""
+}
+
 func Update(qr *sqltypes.Result, session *psdbv1alpha1.Session) {
-	if s := session.VitessSession; s != nil {
+	if s := session.VitessSession; qr != nil && s != nil {
 		s.LastInsertId = qr.InsertID
 		s.InTransaction = qr.IsInTransaction()
 		s.FoundRows = uint64(len(qr.Rows))
@@ -26,7 +33,7 @@ func Update(qr *sqltypes.Result, session *psdbv1alpha1.Session) {
 	}
 }
 
-func New() *psdbv1alpha1.Session {
+func New(dbname string) *psdbv1alpha1.Session {
 	// we're not doing anything with the signature, and it's opaque bytes
 	// to clients, so just generate a random 32 bytes
 	var signature [32]byte
@@ -35,6 +42,7 @@ func New() *psdbv1alpha1.Session {
 	session := &psdbv1alpha1.Session{
 		Signature: signature[:],
 		VitessSession: &vtgatepb.Session{
+			TargetString: dbname,
 			Options: &querypb.ExecuteOptions{
 				IncludedFields:  querypb.ExecuteOptions_ALL,
 				Workload:        querypb.ExecuteOptions_UNSPECIFIED,
