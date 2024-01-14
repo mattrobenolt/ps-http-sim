@@ -95,6 +95,17 @@ func getConn(ctx context.Context, uname, pass, dbname, session string) (*timedCo
 	return getConn(ctx, uname, pass, dbname, session)
 }
 
+func closeConn(uname, pass, dbname, session string) {
+	key := mysqlConnKey{uname, pass, dbname, session}
+
+	connMu.Lock()
+	if conn, ok := connPool[key]; ok {
+		conn.Close()
+		delete(connPool, key)
+	}
+	connMu.Unlock()
+}
+
 // dial connects to the underlying MySQL server, and switches to the underlying
 // database automatically.
 func dial(ctx context.Context, uname, pass, dbname string) (*mysql.Conn, error) {
@@ -355,7 +366,25 @@ func (server) CloseSession(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.CloseSessionRequest],
 ) (*connect.Response[psdbv1alpha1.CloseSessionResponse], error) {
-	return connect.NewResponse(&psdbv1alpha1.CloseSessionResponse{}), nil
+	ll := logger.With(
+		log.String("method", "CloseSession"),
+		log.String("content_type", req.Header().Get("Content-Type")),
+	)
+
+	creds, err := auth.ParseWithSecret(req.Header().Get("Authorization"))
+	if err != nil || creds.Type() != auth.BasicAuthType {
+		ll.Error("unauthenticated", log.Error(err))
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	sess := req.Msg.Session
+	if sess != nil {
+		closeConn(creds.Username(), string(creds.SecretBytes()), session.DBName(sess), session.UUID(sess))
+	}
+
+	return connect.NewResponse(&psdbv1alpha1.CloseSessionResponse{
+		Session: session.Reset(sess),
+	}), nil
 }
 
 func (server) Prepare(
