@@ -234,8 +234,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/sftp v1.13.1/go.mod h1:3HaPG6Dq1ILlpPZRO0HVMrsydcdLt6HRDccSgb87qRg=
 github.com/planetscale/log v0.0.0-20230818230039-324540f3f1cf h1:CrZS7fPVvV/JyAIvWxANPPA8zNlXdqfAQqO4fgEuxJI=
 github.com/planetscale/log v0.0.0-20230818230039-324540f3f1cf/go.mod h1:iVAMoEFq8Xkpego+6LNR+RVoTAgMOY0Mjtp1PTAH25U=
-github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7 h1:dxdoFKWVDlV1gq8UQC8NWCofLjCEjEHw47gfeojgs28=
-github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7/go.mod h1:WZmi4gw3rOK+ryd1inGxgfKwoFV04O7xBCqzWzv0/0U=
+github.com/planetscale/psdb v0.0.0-20240117031008-bc83710bfc8e h1:TrceC4yJnF42CXRojjjOHCn2AUnkobfZm7oQyVLZGwg=
+github.com/planetscale/psdb v0.0.0-20240117031008-bc83710bfc8e/go.mod h1:WZmi4gw3rOK+ryd1inGxgfKwoFV04O7xBCqzWzv0/0U=
 github.com/planetscale/vitess-types v0.0.0-20230808182149-da48f87540fa h1:juLtMTt8CSth379yqZZh1v8JP9UpI/wQlBpsfo/qhdE=
 github.com/planetscale/vitess-types v0.0.0-20230808182149-da48f87540fa/go.mod h1:xzNXoqcNPoV2oI52AwXf+213wzzf46KSOAjGXHrju7U=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=

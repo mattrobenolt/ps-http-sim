@@ -302,6 +302,13 @@ func (server) Execute(
 	}), nil
 }
 
+func (server) ExecuteBatch(
+	ctx context.Context,
+	req *connect.Request[psdbv1alpha1.ExecuteBatchRequest],
+) (*connect.Response[psdbv1alpha1.ExecuteBatchResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+}
+
 func (server) StreamExecute(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.ExecuteRequest],

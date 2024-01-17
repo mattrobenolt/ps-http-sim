@@ -8,7 +8,7 @@ require (
 	connectrpc.com/connect v1.14.0
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/planetscale/log v0.0.0-20230818230039-324540f3f1cf
-	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
+	github.com/planetscale/psdb v0.0.0-20240117031008-bc83710bfc8e
 	github.com/planetscale/vitess-types v0.0.0-20230808182149-da48f87540fa
 	golang.org/x/net v0.20.0
 	google.golang.org/protobuf v1.32.0
