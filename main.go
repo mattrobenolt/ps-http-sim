@@ -268,14 +268,17 @@ func (server) Execute(
 
 	ll.Info("ok")
 
+	start := time.Now()
 	// This is a gross simplificiation, but is likely sufficient
 	qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
+	timing := time.Since(start)
 	session.Update(qr, sess)
 
 	return connect.NewResponse(&psdbv1alpha1.ExecuteResponse{
 		Session: sess,
 		Result:  vitess.ResultToProto(qr),
 		Error:   vitess.ToVTRPC(err),
+		Timing:  timing.Seconds(),
 	}), nil
 }
 
