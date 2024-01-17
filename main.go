@@ -17,6 +17,7 @@ import (
 	"github.com/planetscale/psdb/auth"
 	psdbv1alpha1 "github.com/planetscale/psdb/types/psdb/v1alpha1"
 	"github.com/planetscale/psdb/types/psdb/v1alpha1/psdbv1alpha1connect"
+	querypb "github.com/planetscale/vitess-types/gen/vitess/query/v16"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"vitess.io/vitess/go/mysql"
@@ -306,7 +307,73 @@ func (server) ExecuteBatch(
 	ctx context.Context,
 	req *connect.Request[psdbv1alpha1.ExecuteBatchRequest],
 ) (*connect.Response[psdbv1alpha1.ExecuteBatchResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	ll := logger.With(
+		log.String("method", "ExecuteBatch"),
+		log.String("content_type", req.Header().Get("Content-Type")),
+	)
+
+	creds, err := auth.ParseWithSecret(req.Header().Get("Authorization"))
+	if err != nil || creds.Type() != auth.BasicAuthType {
+		ll.Error("unauthenticated", log.Error(err))
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
+	}
+
+	ll = ll.With(
+		log.String("user", creds.Username()),
+	)
+
+	msg := req.Msg
+	queries := msg.Queries
+	sess := msg.Session
+	clientSession := sess != nil
+
+	// if there is no session, let's generate a new one
+	if !clientSession {
+		sess = session.New(*flagMySQLDbname)
+	}
+	sessionID := session.UUID(sess)
+	dbname := session.DBName(sess)
+
+	ll = ll.With(
+		log.Strings("queries", queries),
+		log.String("session_id", sessionID),
+		log.Bool("client_session", clientSession),
+	)
+
+	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), dbname, sessionID)
+	if err != nil {
+		if strings.Contains(err.Error(), "Access denied for user") {
+			ll.Error("unauthenticated", log.Error(err))
+			return nil, connect.NewError(connect.CodeUnauthenticated, err)
+		} else if err == errSessionInUse {
+			ll.Warn(err.Error())
+			return nil, connect.NewError(
+				connect.CodePermissionDenied,
+				fmt.Errorf("%s: %s", err.Error(), sessionID),
+			)
+		}
+		ll.Error("failed to connect", log.Error(err))
+		return nil, err
+	}
+	defer returnConn(conn)
+
+	ll.Info("ok")
+
+	results := make([]*querypb.ResultWithError, 0, len(queries))
+	for _, query := range queries {
+		// This is a gross simplificiation, but is likely sufficient
+		qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
+		session.Update(qr, sess)
+		results = append(results, &querypb.ResultWithError{
+			Result: vitess.ResultToProto(qr),
+			Error:  vitess.ToVTRPC(err),
+		})
+	}
+
+	return connect.NewResponse(&psdbv1alpha1.ExecuteBatchResponse{
+		Session: sess,
+		Results: results,
+	}), nil
 }
 
 func (server) StreamExecute(
