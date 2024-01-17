@@ -9,6 +9,7 @@ require (
 	github.com/matoous/go-nanoid/v2 v2.0.0
 	github.com/planetscale/log v0.0.0-20230818230039-324540f3f1cf
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
+	github.com/planetscale/vitess-types v0.0.0-20230808182149-da48f87540fa
 	golang.org/x/net v0.20.0
 	google.golang.org/protobuf v1.32.0
 	vitess.io/vitess v0.18.0
@@ -48,7 +49,6 @@ require (
 	github.com/philhofer/fwd v1.1.2 // indirect
 	github.com/pires/go-proxyproto v0.7.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/planetscale/vitess-types v0.0.0-20230808182149-da48f87540fa // indirect
 	github.com/prometheus/client_golang v1.17.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.45.0 // indirect
