@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	connPool map[mysqlConnKey]*timedConn
+	connPool = map[mysqlConnKey]*timedConn{}
 	connMu   sync.RWMutex
 )
 
@@ -37,8 +37,8 @@ type mysqlConnKey struct {
 
 type timedConn struct {
 	*mysql.Conn
-	lastUsed time.Time
-	mu       sync.Mutex
+	mu    sync.Mutex
+	timer *time.Timer
 }
 
 var (
@@ -70,7 +70,13 @@ func getConn(ctx context.Context, uname, pass, dbname, session string) (*timedCo
 		defer connMu.RUnlock()
 
 		if conn.mu.TryLock() {
-			conn.lastUsed = time.Now()
+			if conn.timer == nil {
+				conn.timer = time.AfterFunc(*flagMySQLIdleTimeout, func() {
+					closeIdleConn(uname, pass, dbname, session)
+				})
+			} else {
+				conn.timer.Reset(*flagMySQLIdleTimeout)
+			}
 			return conn, nil
 		} else {
 			return nil, errSessionInUse
@@ -87,12 +93,25 @@ func getConn(ctx context.Context, uname, pass, dbname, session string) (*timedCo
 
 	// lock to write to map
 	connMu.Lock()
-	connPool[key] = &timedConn{Conn: rawConn, lastUsed: time.Now()}
+	connPool[key] = &timedConn{Conn: rawConn}
 	connMu.Unlock()
 
 	// since it was parallel, the last one would have won and been written
 	// so re-read back so we use the conn that was actually stored in the pool
 	return getConn(ctx, uname, pass, dbname, session)
+}
+
+func returnConn(conn *timedConn) {
+	conn.timer.Reset(*flagMySQLIdleTimeout)
+	conn.mu.Unlock()
+}
+
+func closeIdleConn(uname, pass, dbname, session string) {
+	logger.Debug("closing idle connection",
+		log.String("username", uname),
+		log.String("session_id", session),
+	)
+	closeConn(uname, pass, dbname, session)
 }
 
 func closeConn(uname, pass, dbname, session string) {
@@ -101,6 +120,9 @@ func closeConn(uname, pass, dbname, session string) {
 	connMu.Lock()
 	if conn, ok := connPool[key]; ok {
 		conn.Close()
+		if conn.timer != nil {
+			conn.timer.Stop()
+		}
 		delete(connPool, key)
 	}
 	connMu.Unlock()
@@ -143,7 +165,6 @@ func main() {
 	logger, _ = cfg.Build()
 	defer logger.Sync()
 
-	initConnPool()
 	mux := http.NewServeMux()
 	mux.Handle(psdbv1alpha1connect.NewDatabaseHandler(server{}))
 
@@ -182,7 +203,8 @@ func (server) CreateSession(
 	sessionID := session.UUID(sess)
 	dbname := session.DBName(sess)
 
-	if conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), dbname, sessionID); err != nil {
+	conn, err := getConn(ctx, creds.Username(), string(creds.SecretBytes()), dbname, sessionID)
+	if err != nil {
 		if strings.Contains(err.Error(), "Access denied for user") {
 			ll.Error("unauthenticated", log.Error(err))
 			return nil, connect.NewError(connect.CodeUnauthenticated, err)
@@ -195,10 +217,8 @@ func (server) CreateSession(
 		}
 		ll.Error("failed to connect", log.Error(err))
 		return nil, err
-	} else {
-		// need to release the lock immediately since it's not being used.
-		conn.mu.Unlock()
 	}
+	defer returnConn(conn)
 
 	ll.Info("ok")
 
@@ -264,7 +284,7 @@ func (server) Execute(
 		ll.Error("failed to connect", log.Error(err))
 		return nil, err
 	}
-	defer conn.mu.Unlock()
+	defer returnConn(conn)
 
 	ll.Info("ok")
 
@@ -335,7 +355,7 @@ func (server) StreamExecute(
 		ll.Error("failed to connect", log.Error(err))
 		return err
 	}
-	defer conn.mu.Unlock()
+	defer returnConn(conn)
 
 	// fake a streaming response by just returning 2 messages of the same payload
 	// far from reality, but a simple way to exercise the protocol.
@@ -395,50 +415,4 @@ func (server) Prepare(
 	req *connect.Request[psdbv1alpha1.PrepareRequest],
 ) (*connect.Response[psdbv1alpha1.PrepareResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
-}
-
-func initConnPool() {
-	connPool = make(map[mysqlConnKey]*timedConn)
-	go func() {
-		// clean up stale based on flagMySQLIdleTimeout
-		// this is just very quick and simple, it has race conditions,
-		// but I don't care for this.
-		timer := time.NewTicker(*flagMySQLIdleTimeout)
-		defer timer.Stop()
-		for range timer.C {
-			expiration := time.Now().Add(-*flagMySQLIdleTimeout)
-			expired := make([]mysqlConnKey, 0)
-
-			// find which connections are idle
-			connMu.RLock()
-			for key, conn := range connPool {
-				if conn.lastUsed.Before(expiration) {
-					expired = append(expired, key)
-				}
-			}
-			connMu.RUnlock()
-
-			if len(expired) > 0 {
-				for _, key := range expired {
-					connMu.RLock()
-					conn, ok := connPool[key]
-					connMu.RUnlock()
-
-					if !ok {
-						continue
-					}
-
-					connMu.Lock()
-					conn.Close()
-					delete(connPool, key)
-					connMu.Unlock()
-
-					logger.Debug("closing idle connection",
-						log.String("username", key.username),
-						log.String("session_id", key.session),
-					)
-				}
-			}
-		}
-	}()
 }
