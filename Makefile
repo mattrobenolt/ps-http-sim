@@ -35,7 +35,8 @@ run: $(BIN)/$(app)
 		-mysql-idle-timeout=5s \
 		-mysql-no-pass \
 		-mysql-max-rows=1000 \
-		-mysql-dbname=mysql
+		-mysql-dbname=mysql \
+		-mysql-listen-port=3309
 
 docker:
 	docker buildx build --target=local --rm -t $(app) .

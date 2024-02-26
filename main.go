@@ -5,6 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -52,6 +54,7 @@ var (
 	flagMySQLIdleTimeout = commandLine.Duration("mysql-idle-timeout", 10*time.Second, "MySQL connection idle timeout")
 	flagMySQLMaxRows     = commandLine.Uint("mysql-max-rows", 1000, "Max rows for a single query result set")
 	flagMySQLDbname      = commandLine.String("mysql-dbname", "mysql", "MySQL database to connect to")
+	flagMySQLListenPort  = commandLine.Uint("mysql-listen-port", 0, "Run a TCP proxy back to the underlying MySQL server")
 )
 
 var errSessionInUse = errors.New("session already in use")
@@ -152,6 +155,69 @@ func dial(ctx context.Context, uname, pass, dbname string) (*mysql.Conn, error) 
 	return conn, nil
 }
 
+func runTCPProxy() error {
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *flagListenAddr, *flagMySQLListenPort))
+	if err != nil {
+		return err
+	}
+
+	mysqlAddr := fmt.Sprintf("%s:%d", *flagMySQLAddr, *flagMySQLPort)
+
+	go func() {
+		for {
+			clientConn, err := l.Accept()
+			if err != nil {
+				logger.Error("failed to accept TCP connection", log.Error(err))
+			}
+
+			start := time.Now()
+			ll := logger.With(
+				log.String("client_addr", clientConn.RemoteAddr().String()),
+			)
+			ll.Info("new MySQL connection")
+
+			go func() {
+				defer func() {
+					clientConn.Close()
+					ll.Info("client disconnected",
+						log.Duration("duration", time.Since(start)),
+					)
+				}()
+				upstreamConn, err := net.Dial("tcp", mysqlAddr)
+				if err != nil {
+					logger.Error("failed to connect", log.Error(err))
+					return
+				}
+				defer upstreamConn.Close()
+
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() {
+					defer func() {
+						upstreamConn.Close()
+						wg.Done()
+					}()
+					if _, err := io.Copy(upstreamConn, clientConn); err != nil {
+						ll.Warn(err.Error())
+					}
+				}()
+				go func() {
+					defer func() {
+						clientConn.Close()
+						wg.Done()
+					}()
+					if _, err := io.Copy(clientConn, upstreamConn); err != nil {
+						ll.Warn(err.Error())
+					}
+				}()
+				wg.Wait()
+			}()
+		}
+	}()
+
+	return nil
+}
+
 func init() {
 	// Vitess doesn't play nicely, so replace the entire default flagset
 	flag.CommandLine = commandLine
@@ -168,7 +234,17 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle(psdbv1alpha1connect.NewDatabaseHandler(server{}))
 
-	logger.Info("running",
+	if *flagMySQLListenPort > 0 {
+		logger.Info("running MySQL proxy",
+			log.String("addr", *flagListenAddr),
+			log.Uint("port", *flagMySQLListenPort),
+		)
+		if err := runTCPProxy(); err != nil {
+			logger.Panic("failed to start MySQL proxy", log.Error(err))
+		}
+	}
+
+	logger.Info("running HTTP server",
 		log.String("addr", *flagListenAddr),
 		log.Uint("port", *flagListenPort),
 	)
