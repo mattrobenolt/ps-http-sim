@@ -1,8 +1,8 @@
 module github.com/mattrobenolt/ps-http-sim
 
-go 1.21
+go 1.22
 
-toolchain go1.21.6
+toolchain go1.22.0
 
 require (
 	connectrpc.com/connect v1.14.0
