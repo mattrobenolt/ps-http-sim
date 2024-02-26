@@ -21,7 +21,7 @@ $(BIN):
 GO_INSTALL := env GOBIN=$(PWD)/$(BIN) go install -ldflags "-s -w" -trimpath
 
 $(BIN)/goreleaser: Makefile | $(BIN)
-	$(GO_INSTALL) github.com/goreleaser/goreleaser@v1.22.1
+	$(GO_INSTALL) github.com/goreleaser/goreleaser@v1.24.0
 
 $(BIN)/$(app): main.go go.mod go.sum $(src) | $(BIN)
 	$(GO_INSTALL) $(gomod)
