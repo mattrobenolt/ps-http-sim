@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"connectrpc.com/connect"
 	gonanoid "github.com/matoous/go-nanoid/v2"
@@ -23,6 +24,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"vitess.io/vitess/go/mysql"
 	"vitess.io/vitess/go/sqlescape"
+	"vitess.io/vitess/go/sqltypes"
 
 	"github.com/mattrobenolt/ps-http-sim/internal/session"
 	"github.com/mattrobenolt/ps-http-sim/internal/vitess"
@@ -218,6 +220,31 @@ func runTCPProxy() error {
 	return nil
 }
 
+func isQueryFiltered(query string) bool {
+	const minLength = 4
+	if len(query) < minLength {
+		return false
+	}
+	query = strings.TrimSpace(query)
+	if len(query) < minLength {
+		return false
+	}
+
+	// we want to explicitly filter out `SET @@boost_cached_queries = true` for now
+	if strings.EqualFold(query[:minLength], "set ") {
+		query = strings.TrimLeftFunc(query[minLength:], unicode.IsSpace)
+		return strings.HasPrefix(query, "@@boost_cached_queries")
+	}
+
+	// prevent any special `USE @replica` since that isn't going to work locally
+	if strings.EqualFold(query[:minLength], "use ") {
+		query = strings.TrimLeftFunc(query[minLength:], unicode.IsSpace)
+		return strings.ContainsRune(query, '@')
+	}
+
+	return false
+}
+
 func init() {
 	// Vitess doesn't play nicely, so replace the entire default flagset
 	flag.CommandLine = commandLine
@@ -362,11 +389,19 @@ func (server) Execute(
 	}
 	defer returnConn(conn)
 
-	ll.Info("ok")
-
 	start := time.Now()
-	// This is a gross simplificiation, but is likely sufficient
-	qr, err := conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
+
+	var qr *sqltypes.Result
+	if isQueryFiltered(query) {
+		qr = &sqltypes.Result{}
+		err = nil
+		ll.Info("ignored")
+	} else {
+		// This is a gross simplificiation, but is likely sufficient
+		qr, err = conn.ExecuteFetch(query, int(*flagMySQLMaxRows), true)
+		ll.Info("ok")
+	}
+
 	timing := time.Since(start)
 	session.Update(qr, sess)
 

@@ -5,6 +5,7 @@ const config = {
 }
 
 const conn = connect(config)
+await conn.execute('set @@boost_cached_queries = true')
 
 const results = await conn.transaction(async (tx) => {
   return [
