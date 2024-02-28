@@ -5,6 +5,10 @@ BIN := bin
 
 src := main.go internal/session/session.go internal/vitess/vitess.go
 
+ifdef DRYRUN
+GORELEASERFLAGS += --snapshot
+endif
+
 all: $(BIN)/$(app)
 
 clean: clean-bin clean-dist
@@ -44,7 +48,11 @@ docker:
 run-mysql:
 	docker run -it --rm --name $(app)-mysqld -e MYSQL_ALLOW_EMPTY_PASSWORD="true" -e MYSQL_ROOT_PASSWORD="" -p 127.0.0.1:3306:3306 mysql:8.0.34
 
-publish: clean $(BIN)/goreleaser
-	$(BIN)/goreleaser release
+publish: $(BIN)/goreleaser
+	$(BIN)/goreleaser release --clean $(GORELEASERFLAGS)
+	$(MAKE) bump-godoc
 
-.PHONY: all clean clean-bin clean-dist run docker run-mysql publish
+bump-godoc:
+	curl -XPOST https://pkg.go.dev/fetch/$(gomod)@$(shell jq -r .tag dist/metadata.json)
+
+.PHONY: all clean clean-bin clean-dist run docker run-mysql publish bump-godoc

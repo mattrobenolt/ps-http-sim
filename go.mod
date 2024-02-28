@@ -11,7 +11,6 @@ require (
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
 	github.com/planetscale/vitess-types v0.0.0-20231211191709-770e14433716
 	golang.org/x/net v0.21.0
-	google.golang.org/protobuf v1.32.0
 	vitess.io/vitess v0.18.2
 )
 
@@ -82,6 +81,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240221002015-b0ce06bbee7c // indirect
 	google.golang.org/grpc v1.62.0 // indirect
+	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/DataDog/dd-trace-go.v1 v1.60.3 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
