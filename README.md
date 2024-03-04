@@ -58,6 +58,8 @@ Usage of ps-http-sim:
         MySQL database to connect to (default "mysql")
   -mysql-idle-timeout duration
         MySQL connection idle timeout (default 10s)
+  -mysql-listen-port uint
+        Run a TCP proxy back to the underlying MySQL server
   -mysql-max-rows uint
         Max rows for a single query result set (default 1000)
   -mysql-no-pass
