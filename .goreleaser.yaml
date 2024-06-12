@@ -42,13 +42,44 @@ archives:
 
 dockers:
   - use: buildx
+    goarch: amd64
     image_templates:
-      - ghcr.io/mattrobenolt/{{ .ProjectName }}:{{ .Tag }}
-      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}
-      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}
-      - ghcr.io/mattrobenolt/{{ .ProjectName }}:latest
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:{{ .Tag }}-amd64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-amd64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}-amd64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:latest-amd64
     build_flag_templates:
+      - --platform=linux/amd64
       - --target=release
+  - use: buildx
+    goarch: arm64
+    image_templates:
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:{{ .Tag }}-arm64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-arm64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}-arm64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:latest-arm64
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --target=release
+
+docker_manifests:
+  - name_template: ghcr.io/mattrobenolt/{{ .ProjectName }}:{{ .Tag }}
+    image_templates:
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:{{ .Tag }}-amd64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:{{ .Tag }}-arm64
+  - name_template: ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}
+    image_templates:
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-amd64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}-arm64
+  - name_template: ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}
+    image_templates:
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}-amd64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:v{{ .Major }}-arm64
+  - name_template: ghcr.io/mattrobenolt/{{ .ProjectName }}:latest
+    image_templates:
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:latest-amd64
+      - ghcr.io/mattrobenolt/{{ .ProjectName }}:latest-arm64
+
 
 changelog:
   sort: asc
