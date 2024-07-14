@@ -1,16 +1,14 @@
 module github.com/mattrobenolt/ps-http-sim
 
-go 1.22
-
-toolchain go1.22.0
+go 1.22.5
 
 require (
-	connectrpc.com/connect v1.15.0
-	github.com/matoous/go-nanoid/v2 v2.0.0
+	connectrpc.com/connect v1.16.2
+	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/planetscale/log v0.0.0-20230818230039-324540f3f1cf
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
 	github.com/planetscale/vitess-types v0.0.0-20231211191709-770e14433716
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.23.0
 	vitess.io/vitess v0.18.2
 )
 
@@ -74,14 +72,14 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
 	golang.org/x/mod v0.15.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240221002015-b0ce06bbee7c // indirect
 	google.golang.org/grpc v1.62.0 // indirect
-	google.golang.org/protobuf v1.32.0 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/DataDog/dd-trace-go.v1 v1.60.3 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

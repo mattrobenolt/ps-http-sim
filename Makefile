@@ -46,7 +46,7 @@ docker:
 	docker buildx build --target=local --rm -t $(app) .
 
 run-mysql:
-	docker run -it --rm --name $(app)-mysqld -e MYSQL_ALLOW_EMPTY_PASSWORD="true" -e MYSQL_ROOT_PASSWORD="" -p 127.0.0.1:3306:3306 mysql:8.0.34
+	docker run -it --rm --name $(app)-mysqld -e MYSQL_ALLOW_EMPTY_PASSWORD="true" -e MYSQL_ROOT_PASSWORD="" -p 127.0.0.1:3306:3306 mysql:8.0.38
 
 publish: $(BIN)/goreleaser
 	$(BIN)/goreleaser release --clean $(GORELEASERFLAGS)
