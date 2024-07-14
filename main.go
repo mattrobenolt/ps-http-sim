@@ -41,6 +41,7 @@ type mysqlConnKey struct {
 
 type timedConn struct {
 	*mysql.Conn
+	key   mysqlConnKey
 	mu    sync.Mutex
 	timer *time.Timer
 }
@@ -75,12 +76,14 @@ func getConn(ctx context.Context, uname, pass, dbname, session string) (*timedCo
 		defer connMu.RUnlock()
 
 		if conn.mu.TryLock() {
-			if conn.timer == nil {
-				conn.timer = time.AfterFunc(*flagMySQLIdleTimeout, func() {
-					closeIdleConn(uname, pass, dbname, session)
-				})
-			} else {
-				conn.timer.Reset(*flagMySQLIdleTimeout)
+			// if we already have a timer on this connection, stop it
+			// and remove it, because this connection is checked out
+			// we don't want to start the timer until it's returned back
+			// to the pool, therefore considering it "idle" after it's
+			// unused.
+			if conn.timer != nil {
+				conn.timer.Stop()
+				conn.timer = nil
 			}
 			return conn, nil
 		} else {
@@ -98,7 +101,7 @@ func getConn(ctx context.Context, uname, pass, dbname, session string) (*timedCo
 
 	// lock to write to map
 	connMu.Lock()
-	connPool[key] = &timedConn{Conn: rawConn}
+	connPool[key] = &timedConn{Conn: rawConn, key: key}
 	connMu.Unlock()
 
 	// since it was parallel, the last one would have won and been written
@@ -107,21 +110,22 @@ func getConn(ctx context.Context, uname, pass, dbname, session string) (*timedCo
 }
 
 func returnConn(conn *timedConn) {
-	conn.timer.Reset(*flagMySQLIdleTimeout)
+	// set idle timeout when the connection is returned to the pool
+	conn.timer = time.AfterFunc(*flagMySQLIdleTimeout, func() {
+		closeIdleConn(conn.key)
+	})
 	conn.mu.Unlock()
 }
 
-func closeIdleConn(uname, pass, dbname, session string) {
+func closeIdleConn(key mysqlConnKey) {
 	logger.Debug("closing idle connection",
-		log.String("username", uname),
-		log.String("session_id", session),
+		log.String("username", key.username),
+		log.String("session_id", key.session),
 	)
-	closeConn(uname, pass, dbname, session)
+	closeConn(key)
 }
 
-func closeConn(uname, pass, dbname, session string) {
-	key := mysqlConnKey{uname, pass, dbname, session}
-
+func closeConn(key mysqlConnKey) {
 	connMu.Lock()
 	if conn, ok := connPool[key]; ok {
 		conn.Close()
@@ -200,7 +204,7 @@ func runTCPProxy() error {
 						wg.Done()
 					}()
 					if _, err := io.Copy(upstreamConn, clientConn); err != nil {
-						ll.Warn(err.Error())
+						ll.Warn(err.Error(), log.String("side", "server"))
 					}
 				}()
 				go func() {
@@ -209,7 +213,8 @@ func runTCPProxy() error {
 						wg.Done()
 					}()
 					if _, err := io.Copy(clientConn, upstreamConn); err != nil {
-						ll.Warn(err.Error())
+						// client disconnected, so just debug level
+						ll.Debug(err.Error(), log.String("side", "client"))
 					}
 				}()
 				wg.Wait()
@@ -513,7 +518,12 @@ func (server) CloseSession(
 
 	sess := req.Msg.Session
 	if sess != nil {
-		closeConn(creds.Username(), string(creds.SecretBytes()), session.DBName(sess), session.UUID(sess))
+		closeConn(mysqlConnKey{
+			username: creds.Username(),
+			pass:     string(creds.SecretBytes()),
+			dbname:   session.DBName(sess),
+			session:  session.UUID(sess),
+		})
 	}
 
 	return connect.NewResponse(&psdbv1alpha1.CloseSessionResponse{
