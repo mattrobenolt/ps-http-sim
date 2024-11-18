@@ -19,6 +19,7 @@ Compiled binaries can be found in GitHub Releases: https://github.com/mattrobeno
 Images are published to [ghcr.io/mattrobenolt/ps-http-sim:latest](https://github.com/mattrobenolt/ps-http-sim/pkgs/container/ps-http-sim)
 
 ### docker-compose
+
 A sample docker-compose.yml is available in the examples folder.
 This will spin up a mysql server on the default port of 3306, and ps-http-sim on port 3900.
 
@@ -52,6 +53,8 @@ Usage of ps-http-sim:
         HTTP server address (default "127.0.0.1")
   -listen-port uint
         HTTP server port (default 8080)
+  -log-level string
+        Log level (debug, info, warn, error, dpanic, panic, fatal) (default "debug")
   -mysql-addr string
         MySQL address (default "127.0.0.1")
   -mysql-dbname string

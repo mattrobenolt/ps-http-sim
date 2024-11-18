@@ -34,6 +34,7 @@ run: $(BIN)/$(app)
 	$< \
 		-listen-addr=127.0.0.1 \
 		-listen-port=8080 \
+		-log-level=debug \
 		-mysql-addr=127.0.0.1 \
 		-mysql-port=3306 \
 		-mysql-idle-timeout=5s \
