@@ -51,6 +51,7 @@ var (
 
 	flagListenAddr       = commandLine.String("listen-addr", "127.0.0.1", "HTTP server address")
 	flagListenPort       = commandLine.Uint("listen-port", 8080, "HTTP server port")
+	flagLogLevel         = commandLine.String("log-level", "debug", "Log level (debug, info, warn, error)")
 	flagMySQLAddr        = commandLine.String("mysql-addr", "127.0.0.1", "MySQL address")
 	flagMySQLPort        = commandLine.Uint("mysql-port", 3306, "MySQL port")
 	flagMySQLNoPass      = commandLine.Bool("mysql-no-pass", false, "Don't use password for MySQL connection")
@@ -259,7 +260,13 @@ func init() {
 var logger *log.Logger
 
 func main() {
-	cfg := log.NewPlanetScaleConfig("pretty", log.DebugLevel)
+	level, err := log.ParseLevel(*flagLogLevel)
+	if err != nil {
+		fmt.Printf("Invalid log level '%s', defaulting to 'debug'\n", *flagLogLevel)
+		level = log.DebugLevel
+	}
+
+	cfg := log.NewPlanetScaleConfig("pretty", level)
 	logger, _ = cfg.Build()
 	defer logger.Sync()
 
