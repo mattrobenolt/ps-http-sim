@@ -1,9 +1,9 @@
 module github.com/mattrobenolt/ps-http-sim
 
-go 1.22.5
+go 1.22.9
 
 require (
-	connectrpc.com/connect v1.16.2
+	connectrpc.com/connect v1.17.0
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/planetscale/log v0.0.0-20230818230039-324540f3f1cf
 	github.com/planetscale/psdb v0.0.0-20240109164348-6848e728f6e7
