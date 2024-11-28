@@ -25,7 +25,7 @@ $(BIN):
 GO_INSTALL := env GOBIN=$(PWD)/$(BIN) go install -ldflags "-s -w" -trimpath
 
 $(BIN)/goreleaser: Makefile | $(BIN)
-	$(GO_INSTALL) github.com/goreleaser/goreleaser@v1.24.0
+	$(GO_INSTALL) github.com/goreleaser/goreleaser/v2@v2.4.8
 
 $(BIN)/$(app): main.go go.mod go.sum $(src) | $(BIN)
 	$(GO_INSTALL) $(gomod)
@@ -51,9 +51,5 @@ run-mysql:
 
 publish: $(BIN)/goreleaser
 	$(BIN)/goreleaser release --clean $(GORELEASERFLAGS)
-	$(MAKE) bump-godoc
 
-bump-godoc:
-	curl -XPOST https://pkg.go.dev/fetch/$(gomod)@$(shell jq -r .tag dist/metadata.json)
-
-.PHONY: all clean clean-bin clean-dist run docker run-mysql publish bump-godoc
+.PHONY: all clean clean-bin clean-dist run docker run-mysql publish

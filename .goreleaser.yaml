@@ -6,6 +6,8 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
 
+version: 2
+
 project_name: ps-http-sim
 
 before:
@@ -88,3 +90,8 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+
+announce:
+  webhook:
+    enabled: true
+    endpoint_url: https://pkg.go.dev/fetch/github.com/mattrobenolt/{{ .ProjectName }}@{{ .Tag }}
