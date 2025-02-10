@@ -4,8 +4,8 @@ import (
 	"context"
 	"unsafe"
 
-	querypb "github.com/planetscale/vitess-types/gen/vitess/query/v16"
-	vtrpcpb "github.com/planetscale/vitess-types/gen/vitess/vtrpc/v16"
+	querypb "github.com/planetscale/vitess-types/gen/vitess/query/v19"
+	vtrpcpb "github.com/planetscale/vitess-types/gen/vitess/vtrpc/v19"
 	"vitess.io/vitess/go/sqltypes"
 	vitessquerypb "vitess.io/vitess/go/vt/proto/query"
 )

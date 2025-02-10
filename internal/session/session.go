@@ -5,8 +5,8 @@ import (
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	psdbv1alpha1 "github.com/planetscale/psdb/types/psdb/v1alpha1"
-	querypb "github.com/planetscale/vitess-types/gen/vitess/query/v16"
-	vtgatepb "github.com/planetscale/vitess-types/gen/vitess/vtgate/v16"
+	querypb "github.com/planetscale/vitess-types/gen/vitess/query/v19"
+	vtgatepb "github.com/planetscale/vitess-types/gen/vitess/vtgate/v19"
 	"vitess.io/vitess/go/sqltypes"
 )
 
