@@ -33,16 +33,16 @@ func Update(qr *sqltypes.Result, session *psdbv1alpha1.Session) {
 	}
 }
 
-func Reset(session *psdbv1alpha1.Session) *psdbv1alpha1.Session {
+func Reset(session *psdbv1alpha1.Session, clientFoundRows bool) *psdbv1alpha1.Session {
 	id := UUID(session)
 	dbname := DBName(session)
 
-	session = New(dbname)
+	session = New(dbname, clientFoundRows)
 	session.VitessSession.SessionUUID = id
 	return session
 }
 
-func New(dbname string) *psdbv1alpha1.Session {
+func New(dbname string, clientFoundRows bool) *psdbv1alpha1.Session {
 	// we're not doing anything with the signature, and it's opaque bytes
 	// to clients, so just generate a random 32 bytes
 	var signature [32]byte
@@ -55,7 +55,7 @@ func New(dbname string) *psdbv1alpha1.Session {
 			Options: &querypb.ExecuteOptions{
 				IncludedFields:  querypb.ExecuteOptions_ALL,
 				Workload:        querypb.ExecuteOptions_UNSPECIFIED,
-				ClientFoundRows: true,
+				ClientFoundRows: clientFoundRows,
 			},
 			Autocommit:           true,
 			DDLStrategy:          "direct",

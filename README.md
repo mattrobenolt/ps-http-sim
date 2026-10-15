@@ -57,6 +57,8 @@ Usage of ps-http-sim:
         Log level (debug, info, warn, error, dpanic, panic, fatal) (default "debug")
   -mysql-addr string
         MySQL address (default "127.0.0.1")
+  -mysql-client-found-rows
+        Enable CLIENT_FOUND_ROWS on the MySQL connection for HTTP API clients
   -mysql-dbname string
         MySQL database to connect to (default "mysql")
   -mysql-idle-timeout duration

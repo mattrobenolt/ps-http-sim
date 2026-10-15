@@ -49,16 +49,17 @@ type timedConn struct {
 var (
 	commandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-	flagListenAddr       = commandLine.String("listen-addr", "127.0.0.1", "HTTP server address")
-	flagListenPort       = commandLine.Uint("listen-port", 8080, "HTTP server port")
-	flagLogLevel         = commandLine.String("log-level", "debug", "Log level (debug, info, warn, error)")
-	flagMySQLAddr        = commandLine.String("mysql-addr", "127.0.0.1", "MySQL address")
-	flagMySQLPort        = commandLine.Uint("mysql-port", 3306, "MySQL port")
-	flagMySQLNoPass      = commandLine.Bool("mysql-no-pass", false, "Don't use password for MySQL connection")
-	flagMySQLIdleTimeout = commandLine.Duration("mysql-idle-timeout", 10*time.Second, "MySQL connection idle timeout")
-	flagMySQLMaxRows     = commandLine.Uint("mysql-max-rows", 1000, "Max rows for a single query result set")
-	flagMySQLDbname      = commandLine.String("mysql-dbname", "mysql", "MySQL database to connect to")
-	flagMySQLListenPort  = commandLine.Uint("mysql-listen-port", 0, "Run a TCP proxy back to the underlying MySQL server")
+	flagListenAddr           = commandLine.String("listen-addr", "127.0.0.1", "HTTP server address")
+	flagListenPort           = commandLine.Uint("listen-port", 8080, "HTTP server port")
+	flagLogLevel             = commandLine.String("log-level", "debug", "Log level (debug, info, warn, error)")
+	flagMySQLAddr            = commandLine.String("mysql-addr", "127.0.0.1", "MySQL address")
+	flagMySQLPort            = commandLine.Uint("mysql-port", 3306, "MySQL port")
+	flagMySQLNoPass          = commandLine.Bool("mysql-no-pass", false, "Don't use password for MySQL connection")
+	flagMySQLIdleTimeout     = commandLine.Duration("mysql-idle-timeout", 10*time.Second, "MySQL connection idle timeout")
+	flagMySQLMaxRows         = commandLine.Uint("mysql-max-rows", 1000, "Max rows for a single query result set")
+	flagMySQLDbname          = commandLine.String("mysql-dbname", "mysql", "MySQL database to connect to")
+	flagMySQLListenPort      = commandLine.Uint("mysql-listen-port", 0, "Run a TCP proxy back to the underlying MySQL server")
+	flagMySQLClientFoundRows = commandLine.Bool("mysql-client-found-rows", false, "Enable CLIENT_FOUND_ROWS on the MySQL connection for HTTP API clients")
 )
 
 var errSessionInUse = errors.New("session already in use")
@@ -144,12 +145,19 @@ func dial(ctx context.Context, uname, pass, dbname string) (*mysql.Conn, error) 
 	if *flagMySQLNoPass {
 		pass = ""
 	}
-	conn, err := mysql.Connect(ctx, &mysql.ConnParams{
+
+	params := &mysql.ConnParams{
 		Host:  *flagMySQLAddr,
 		Port:  int(*flagMySQLPort),
 		Uname: uname,
 		Pass:  pass,
-	})
+	}
+
+	if *flagMySQLClientFoundRows {
+		params.EnableClientFoundRows()
+	}
+
+	conn, err := mysql.Connect(ctx, params)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +322,7 @@ func (server) CreateSession(
 		log.String("user", creds.Username()),
 	)
 
-	sess := session.New(*flagMySQLDbname)
+	sess := session.New(*flagMySQLDbname, *flagMySQLClientFoundRows)
 	sessionID := session.UUID(sess)
 	dbname := session.DBName(sess)
 
@@ -373,7 +381,7 @@ func (server) Execute(
 
 	// if there is no session, let's generate a new one
 	if !clientSession {
-		sess = session.New(*flagMySQLDbname)
+		sess = session.New(*flagMySQLDbname, *flagMySQLClientFoundRows)
 	}
 	sessionID := session.UUID(sess)
 	dbname := session.DBName(sess)
@@ -452,7 +460,7 @@ func (server) StreamExecute(
 
 	// if there is no session, let's generate a new one
 	if !clientSession {
-		sess = session.New(*flagMySQLDbname)
+		sess = session.New(*flagMySQLDbname, *flagMySQLClientFoundRows)
 	}
 	sessionID := session.UUID(sess)
 	dbname := session.DBName(sess)
@@ -534,7 +542,7 @@ func (server) CloseSession(
 	}
 
 	return connect.NewResponse(&psdbv1alpha1.CloseSessionResponse{
-		Session: session.Reset(sess),
+		Session: session.Reset(sess, *flagMySQLClientFoundRows),
 	}), nil
 }
 
